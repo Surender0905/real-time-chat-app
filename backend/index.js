@@ -8,6 +8,7 @@ const cors = require("cors");
 const authRouter = require("./routes/auth.routes");
 const Message = require("./models/Messages");
 const User = require("./models/User");
+const authMiddleware = require("./middlewares/authMiddleware");
 
 const app = express();
 //http server
@@ -53,10 +54,16 @@ app.use((err, req, res, next) => {
     });
 });
 
+let users = {};
 //socket logic
 io.on("connection", (socket) => {
     console.log("a user connected", socket.id);
 
+    // Listen for a user joining the chat
+    socket.on("joinChat", (userId) => {
+        console.log(`${userId} has joined the chat`);
+        users[userId] = socket.id; // Map user to socket id
+    });
     socket.on("send-message", async (data) => {
         const { senderId, receiverId, text } = data;
         try {
@@ -70,15 +77,30 @@ io.on("connection", (socket) => {
             console.log(error);
         }
 
+        // Emit the message to the recipient
+        if (users[receiverId]) {
+            io.to(users[receiverId]).emit("receiveMessage", messageData);
+        }
         socket.broadcast.emit("receive-message", data);
     });
 
+    // socket.on("disconnect", () => {
+    //     console.log("a user disconnected", socket.id);
+    // });
+
+    // Handle user disconnecting
     socket.on("disconnect", () => {
-        console.log("a user disconnected", socket.id);
+        console.log("A user disconnected", socket.id);
+        for (let userId in users) {
+            if (users[userId] === socket.id) {
+                delete users[userId]; // Remove the user from the users list
+                break;
+            }
+        }
     });
 });
 
-app.get("/api/messages", async (req, res) => {
+app.get("/api/messages", authMiddleware, async (req, res) => {
     const { senderId, receiverId } = req.query;
     try {
         const messages = await Message.find({
@@ -94,7 +116,7 @@ app.get("/api/messages", async (req, res) => {
     }
 });
 
-app.get("/api/users", async (req, res) => {
+app.get("/api/users", authMiddleware, async (req, res) => {
     try {
         const users = await User.find({
             $ne: {
