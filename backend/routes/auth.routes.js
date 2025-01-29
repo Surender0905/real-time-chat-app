@@ -23,16 +23,14 @@ router.post("/register", async (req, res) => {
             });
         }
 
-        const user = await User.create({ username, password }).select(
-            "-password",
-        );
+        const user = await User.create({ username, password });
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: "1d",
         });
         res.status(201).json({
             success: true,
             message: "User created successfully.",
-            user,
+            username,
             token,
         });
     } catch (error) {
@@ -78,6 +76,7 @@ router.post("/login", async (req, res) => {
             success: true,
             message: "User logged in successfully.",
             username,
+            id: user._id,
             token,
         });
     } catch (error) {
