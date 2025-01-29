@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const authRouter = require("./routes/auth.routes");
 const Message = require("./models/Messages");
+const User = require("./models/User");
 
 const app = express();
 //http server
@@ -95,7 +96,11 @@ app.get("/api/messages", async (req, res) => {
 
 app.get("/api/users", async (req, res) => {
     try {
-        const users = await User.find();
+        const users = await User.find({
+            $ne: {
+                _id: req.user.id,
+            },
+        });
         res.status(200).json(users);
     } catch (error) {
         console.log(error);
