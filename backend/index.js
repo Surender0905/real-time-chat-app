@@ -16,7 +16,7 @@ const httpServer = createServer(app);
 //socket server
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: "http://localhost:5173",
         methods: ["GET", "POST"],
     },
 });
@@ -65,11 +65,12 @@ io.on("connection", (socket) => {
         users[userId] = socket.id; // Map user to socket id
     });
     socket.on("send-message", async (data) => {
-        const { senderId, receiverId, text } = data;
+        const { sender, receiver, text } = data;
+        console.log(data, "socket");
         try {
             const message = new Message({
-                sender: senderId,
-                receiver: receiverId,
+                sender,
+                receiver,
                 text,
             });
             await message.save();
@@ -78,8 +79,8 @@ io.on("connection", (socket) => {
         }
 
         // Emit the message to the recipient
-        if (users[receiverId]) {
-            io.to(users[receiverId]).emit("receiveMessage", messageData);
+        if (users[receiver]) {
+            io.to(users[receiver]).emit("receiveMessage", messageData);
         }
         socket.broadcast.emit("receive-message", data);
     });
@@ -90,7 +91,7 @@ io.on("connection", (socket) => {
 
     // Handle user disconnecting
     socket.on("disconnect", () => {
-        console.log("A user disconnected", socket.id);
+        console.log("a user disconnected", socket.id);
         for (let userId in users) {
             if (users[userId] === socket.id) {
                 delete users[userId]; // Remove the user from the users list
@@ -102,13 +103,19 @@ io.on("connection", (socket) => {
 
 app.get("/api/messages", authMiddleware, async (req, res) => {
     const { senderId, receiverId } = req.query;
+
     try {
         const messages = await Message.find({
             $or: [
                 { sender: senderId, receiver: receiverId },
                 { sender: receiverId, receiver: senderId },
             ],
-        }).sort({ createdAt: 1 });
+        })
+            .populate("sender")
+            .populate("receiver")
+            .sort({ createdAt: 1 });
+
+        console.log(messages, "server");
         res.status(200).json(messages);
     } catch (error) {
         console.log(error);
@@ -119,9 +126,7 @@ app.get("/api/messages", authMiddleware, async (req, res) => {
 app.get("/api/users", authMiddleware, async (req, res) => {
     try {
         const users = await User.find({
-            $ne: {
-                _id: req.user.id,
-            },
+            username: { $ne: req.user.username },
         });
         res.status(200).json(users);
     } catch (error) {

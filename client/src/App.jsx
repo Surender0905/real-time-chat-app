@@ -12,7 +12,8 @@ function App() {
 }
 
 const RouteHandler = () => {
-    const isLogin = localStorage.getItem("token");
+    const isLogin = !!localStorage.getItem("token");
+
     return (
         <Routes>
             <Route

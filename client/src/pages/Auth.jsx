@@ -31,8 +31,7 @@ const AuthForm = () => {
             console.log(response.data, "test");
             toast.success(response.data.message);
             localStorage.setItem("token", response.data.token);
-            localStorage.setItem("id", response.data.id);
-            localStorage.setItem("username", response.data.username);
+            localStorage.setItem("user", JSON.stringify(response.data));
         } catch (error) {
             setError(error.response?.data?.message || "Something went wrong");
         }

@@ -2,9 +2,14 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const authMiddleware = (req, res, next) => {
-    const token = req.header("Authorization");
+    let token = req.header("Authorization");
+
     if (!token)
         return res.status(401).json({ message: "Authorization denied" });
+
+    if (token.startsWith("Bearer ")) {
+        token = token.slice(7, token.length).trimLeft();
+    }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
